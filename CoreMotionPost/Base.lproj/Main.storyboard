@@ -103,7 +103,7 @@
                     <connections>
                         <outlet property="activityTypeLabel" destination="2qS-Hv-CJo" id="42d-AQ-Cqz"/>
                         <outlet property="startButton" destination="JuV-f9-xp8" id="mu3-lL-nMp"/>
-                        <outlet property="stepCountLabel" destination="e0m-ZY-lJW" id="Sb8-EK-iYL"/>
+                        <outlet property="stepsCountLabel" destination="e0m-ZY-lJW" id="VWd-yU-UHf"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

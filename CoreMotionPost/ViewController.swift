@@ -11,7 +11,7 @@ class ViewController: UIViewController {
     private var startDate: Date? = nil
 
     @IBOutlet weak var startButton: UIButton!
-    @IBOutlet weak var stepCountLabel: UILabel!
+    @IBOutlet weak var stepsCountLabel: UILabel!
     @IBOutlet weak var activityTypeLabel: UILabel!
 
     override func viewDidLoad() {
@@ -27,21 +27,47 @@ class ViewController: UIViewController {
 
     @objc private func didTapStartButton() {
         shouldStartUpdating = !shouldStartUpdating
+        shouldStartUpdating ? (onStart()) : (onStop())
+    }
+}
 
-        let buttonTitle = shouldStartUpdating ? ("Stop") : ("Start")
-        startButton.setTitle(buttonTitle, for: .normal)
 
-        if shouldStartUpdating {
-            startDate = Date()
-            startUpdating()
-        } else {
-            stopUpdating()
-        }
+extension ViewController {
+    private func onStart() {
+        startButton.setTitle("Stop", for: .normal)
+        startDate = Date()
+        checkAuthorizationStatus()
+        startUpdating()
+    }
+
+    private func onStop() {
+        startButton.setTitle("Start", for: .normal)
+        startDate = nil
+        stopUpdating()
     }
 
     private func startUpdating() {
-        startTrackingActivityType()
-        startCountingSteps()
+        if CMMotionActivityManager.isActivityAvailable() {
+            startTrackingActivityType()
+        } else {
+            activityTypeLabel.text = "Not available"
+        }
+
+        if CMPedometer.isStepCountingAvailable() {
+            startCountingSteps()
+        } else {
+            stepsCountLabel.text = "Not available"
+        }
+    }
+
+    private func checkAuthorizationStatus() {
+        switch CMMotionActivityManager.authorizationStatus() {
+        case CMAuthorizationStatus.denied:
+            onStop()
+            activityTypeLabel.text = "Not available"
+            stepsCountLabel.text = "Not available"
+        default:break
+        }
     }
 
     private func stopUpdating() {
@@ -49,49 +75,49 @@ class ViewController: UIViewController {
         pedometer.stopUpdates()
         pedometer.stopEventUpdates()
     }
-}
 
+    private func on(error: Error) {
+        //handle error
+    }
 
-extension ViewController {
     private func updateStepsCountLabelUsing(startDate: Date) {
         pedometer.queryPedometerData(from: startDate, to: Date()) {
             [weak self] pedometerData, error in
-            guard let pedometerData = pedometerData, error == nil else { return }
-            DispatchQueue.main.async {
-                self?.stepCountLabel.text = String(describing: pedometerData.numberOfSteps)
+            if let error = error {
+                self?.on(error: error)
+            } else if let pedometerData = pedometerData {
+                DispatchQueue.main.async {
+                    self?.stepsCountLabel.text = String(describing: pedometerData.numberOfSteps)
+                }
             }
         }
     }
 
     private func startTrackingActivityType() {
-        if CMMotionActivityManager.isActivityAvailable() {
-            activityManager.startActivityUpdates(to: OperationQueue.main) {
-                [weak self] (activity: CMMotionActivity?) in
-
-                guard let activity = activity else { return }
-                DispatchQueue.main.async {
-                    if activity.walking {
-                        self?.activityTypeLabel.text = "Walking"
-                    } else if activity.stationary {
-                        self?.activityTypeLabel.text = "Stationary"
-                    } else if activity.running {
-                        self?.activityTypeLabel.text = "Running"
-                    } else if activity.automotive {
-                        self?.activityTypeLabel.text = "Automotive"
-                    }
+        activityManager.startActivityUpdates(to: OperationQueue.main) {
+            [weak self] (activity: CMMotionActivity?) in
+            guard let activity = activity else { return }
+            DispatchQueue.main.async {
+                if activity.walking {
+                    self?.activityTypeLabel.text = "Walking"
+                } else if activity.stationary {
+                    self?.activityTypeLabel.text = "Stationary"
+                } else if activity.running {
+                    self?.activityTypeLabel.text = "Running"
+                } else if activity.automotive {
+                    self?.activityTypeLabel.text = "Automotive"
                 }
             }
         }
     }
 
     private func startCountingSteps() {
-        if CMPedometer.isStepCountingAvailable() {
-            pedometer.startUpdates(from: Date()) {
-                [weak self] pedometerData, error in
-                guard let pedometerData = pedometerData, error == nil else { return }
-                DispatchQueue.main.async {
-                    self?.stepCountLabel.text = String(describing: pedometerData.numberOfSteps)
-                }
+        pedometer.startUpdates(from: Date()) {
+            [weak self] pedometerData, error in
+            guard let pedometerData = pedometerData, error == nil else { return }
+
+            DispatchQueue.main.async {
+                self?.stepsCountLabel.text = pedometerData.numberOfSteps.stringValue
             }
         }
     }
